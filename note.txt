@@ -1,0 +1,54 @@
+﻿
+2018/7/5
+关于STM32中VBAT、VDD、VDDA以及VSSVSSA的区别和功能作用
+VBAT是电池供电，不用电池的时候可以接VCC或者不接(可用于RTC)
+
+
+关于ST MCU芯片的VCAP管脚
+STM32芯片的VCAP管脚是为了保证内部主调压器的电压稳定，选择不当可能会引起程序无法下载或者运行不稳定的情况（2.2uf电容）
+
+
+关于STM32的BOOT1和BOOT0
+BOOT1=x   BOOT0=0   从用户闪存启动，这是正常的工作模式。
+BOOT1=0   BOOT0=1   从系统存储器启动，这种模式启动的程序功能由厂家设置。
+BOOT1=1   BOOT0=1   从内置SRAM启动，这种模式可以用于调试。
+
+OSCI 振荡器输入 OSCI 振荡器输出
+
+7/16
+HSE 高速外部时钟 4~16MHz
+LSI 低速内部时钟 RC振荡器，频率40kHz
+LSE 低速外部时钟 32.768kHz
+PLL 锁相环倍频输出 HSI/2 HSE/2 倍频2~16倍 最大72MHz
+SYSCLK 系统时钟
+FCLK 自由运行时钟 供给CPU内核的时钟信号
+HCLK AHB总线时钟 由SYSCLK分频得到，一般不分频 高速外设时钟 HCLK是高速外设时钟
+PCLK 优秀的高性能外设总线供给时钟信号APB
+
+机器代码 CODE
+常量 RO-data
+初值非0全局变量 RW-data
+初值为0全局变量 RO-data
+局部变量 ZI-data栈空间
+malloc动态分配的空间 ZI-data堆空间
+
+stm32f030的GPIO口的配置
+GPIO_Pin 引脚 0-16
+GPIO_Mode模式 GPIO_Mode_IN输入 GPIO_Mode_OUT输出 GPIO_Mode_AF复用功能 GPIO_Mode_AN模拟功能
+GPIO_OType输出类型（只对输出起作用） GPIO_OType_PP推挽输出 GPIO_OType_OD开漏输出
+GPIO_Speed速度 GPIO_Speed_2MHz低速、GPIO_Speed_10MHz中速、GPIO_Speed_50MHz高速
+GPIO_PuPd上下拉： GPIO_PuPd_NOPULL浮空 GPIO_PuPd_UP上拉 GPIO_PuPd_DOWN下拉
+
+PMOS 当ug<us时导通
+NMOS 当ug>us时导通
+
+
+7/21
+IAR的.map文件分析
+1、文件头，包含连接器版本，文件名，MAP文件名以及连接器的命令行等
+2、RUNTIME MODEL ATTRIBUTES 运行时MODEL属性
+3、PLACEMENT SUMMARY 各SECTOR在存储器中分布的位置
+4、初始化表
+5、MODULE SUMMARY 概述模块，主要概述文件于库（模块）所占ro代码大小、rw数据大小
+6、ENTRY LIST 函数的入口地址和函数所在的目标文件
+7、函数最后 总代码数和数据字节数
