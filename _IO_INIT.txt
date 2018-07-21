@@ -1,0 +1,141 @@
+//gpio定义的方法
+typedef struct _IO_INIT
+{
+	GPIO_TypeDef * port;
+	uint16_t pin;
+	uint16_t af;
+	uint16_t mode;
+	uint16_t flags;
+}IO_INIT;
+
+#define DEF_IO_INIT(name, mode, af, flags)	{name##_PORT, name##_PIN, af, mode, flags}
+
+static IO_INIT io_init[] = {
+	DEF_IO_INIT(UPS_UART_TXD, IO_TYPE_AF, GPIO_AF_UART4, 0),
+	DEF_IO_INIT(UPS_UART_RXD, IO_TYPE_AF, GPIO_AF_UART4, 0),
+
+	DEF_IO_INIT(TEST_UART_TXD, IO_TYPE_AF, GPIO_AF_USART2, 0),
+	DEF_IO_INIT(TEST_UART_RXD, IO_TYPE_AF, GPIO_AF_USART2, 0),
+
+	DEF_IO_INIT(BATT1_UART_TXD, IO_TYPE_AF, GPIO_AF_USART1, 0),
+	DEF_IO_INIT(BATT1_UART_RXD, IO_TYPE_AF, GPIO_AF_USART1, 0),
+
+	DEF_IO_INIT(BATT2_UART_TXD, IO_TYPE_AF, GPIO_AF_UART5, 0),
+	DEF_IO_INIT(BATT2_UART_RXD, IO_TYPE_AF, GPIO_AF_UART5, 0),
+
+	DEF_IO_INIT(BATT3_UART_TXD, IO_TYPE_AF, GPIO_AF_USART6, 0),
+	DEF_IO_INIT(BATT3_UART_RXD, IO_TYPE_AF, GPIO_AF_USART6, 0),
+
+	DEF_IO_INIT(BATT4_UART_TXD, IO_TYPE_AF, GPIO_AF_USART3, 0),
+	DEF_IO_INIT(BATT4_UART_RXD, IO_TYPE_AF, GPIO_AF_USART3, 0),
+
+
+	DEF_IO_INIT(LED_SPI_CLK, IO_TYPE_AF, GPIO_AF_SPI1, 0),
+	DEF_IO_INIT(LED_SPI_MOSI, IO_TYPE_AF, GPIO_AF_SPI1, 0),
+
+	DEF_IO_INIT(BATT1_INT, IO_TYPE_IN_PULL_HI, 0, 0),
+	DEF_IO_INIT(BATT2_INT, IO_TYPE_IN_PULL_HI, 0, 0),
+	DEF_IO_INIT(BATT3_INT, IO_TYPE_IN_PULL_HI, 0, 0),
+	DEF_IO_INIT(BATT4_INT, IO_TYPE_IN_PULL_HI, 0, 0),
+
+	DEF_IO_INIT(BATT1_RST, IO_TYPE_OUT_PP, 0, 1),
+	DEF_IO_INIT(BATT2_RST, IO_TYPE_OUT_PP, 0, 1),
+	DEF_IO_INIT(BATT3_RST, IO_TYPE_OUT_PP, 0, 1),
+	DEF_IO_INIT(BATT4_RST, IO_TYPE_OUT_PP, 0, 1),
+
+	DEF_IO_INIT(BATT1_OUTE, IO_TYPE_OUT_PP, 0, 0),
+	DEF_IO_INIT(BATT2_OUTE, IO_TYPE_OUT_PP, 0, 0),
+	DEF_IO_INIT(BATT3_OUTE, IO_TYPE_OUT_PP, 0, 0),
+	DEF_IO_INIT(BATT4_OUTE, IO_TYPE_OUT_PP, 0, 0),
+
+	
+	DEF_IO_INIT(DETECT_12V, IO_TYPE_IN_FLOATING, 0, 0),
+	DEF_IO_INIT(DETECT_SPEED, IO_TYPE_IN_FLOATING, 0, 0),
+	
+
+	DEF_IO_INIT(LOCK_QH, IO_TYPE_IN_FLOATING, 0, 0),
+	DEF_IO_INIT(LOCK_QG, IO_TYPE_IN_FLOATING, 0, 0),
+	DEF_IO_INIT(LOCK_OUTA, IO_TYPE_OUT_PP, 0, 0),
+	DEF_IO_INIT(LOCK_CLK, IO_TYPE_OUT_PP, 0, 1),
+	DEF_IO_INIT(LOCK_CLR, IO_TYPE_OUT_PP, 0, 1),
+};
+
+static void _GPIO_init(const IO_INIT *io, int n_io)
+{
+	GPIO_InitTypeDef gpio_init;
+	
+	int i, source;
+	
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOE, ENABLE);
+
+	for(i=0; i<n_io; i++) {
+		GPIO_StructInit(&gpio_init);
+		gpio_init.GPIO_Speed = GPIO_Speed_50MHz;
+		gpio_init.GPIO_Pin = io[i].pin;
+
+		for(source=0; source < 16; source ++) {
+			if(io[i].pin & (1<<source))
+				break;
+		}
+		
+		switch(io[i].mode) {
+		case IO_TYPE_AF:
+			gpio_init.GPIO_Mode = GPIO_Mode_AF;	
+			GPIO_PinAFConfig(io[i].port, source, io[i].af);
+			if(io[i].flags)
+				gpio_init.GPIO_PuPd = (GPIOPuPd_TypeDef)io[i].flags;
+			break;
+		case IO_TYPE_IN_FLOATING:
+			gpio_init.GPIO_Mode = GPIO_Mode_IN;
+			gpio_init.GPIO_PuPd = GPIO_PuPd_NOPULL;
+			if(io[i].flags) {
+				EXTI_int_init(&io[i], source);
+			}
+			break;
+		case IO_TYPE_IN_PULL_HI:
+			gpio_init.GPIO_Mode = GPIO_Mode_IN;
+			gpio_init.GPIO_PuPd = GPIO_PuPd_UP;
+			if(io[i].flags) {
+				EXTI_int_init(&io[i], source);
+			}
+			break;
+		case IO_TYPE_IN_PULL_LO:
+			gpio_init.GPIO_Mode = GPIO_Mode_IN;
+			gpio_init.GPIO_PuPd = GPIO_PuPd_DOWN;
+			if(io[i].flags) {
+				EXTI_int_init(&io[i], source);
+			}
+			break;
+		case IO_TYPE_OUT_PP:
+			gpio_init.GPIO_Mode = GPIO_Mode_OUT;
+			gpio_init.GPIO_OType= GPIO_OType_PP;
+			if(io[i].flags)
+				GPIO_SetBits(io[i].port, io[i].pin);
+			else
+				GPIO_ResetBits(io[i].port, io[i].pin);
+			break;
+		case IO_TYPE_OUT_OD:
+			gpio_init.GPIO_Mode = GPIO_Mode_OUT;
+			gpio_init.GPIO_OType= GPIO_OType_OD;
+			if(io[i].flags)
+				GPIO_SetBits(io[i].port, io[i].pin);
+			else
+				GPIO_ResetBits(io[i].port, io[i].pin);
+			break;
+		case IO_TYPE_AN:
+			gpio_init.GPIO_Mode = GPIO_Mode_AN;
+			break;
+		}
+		GPIO_Init(io[i].port, &gpio_init);
+	}
+}
+
+
+static void GPIO_init()
+{
+	_GPIO_init(io_init, sizeof(io_init)/sizeof(io_init[0]));
+}
